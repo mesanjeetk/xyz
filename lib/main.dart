@@ -1,167 +1,119 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:responsive_framework/responsive_framework.dart';
-
-import 'screens/splash_screen.dart';
-import 'screens/main_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/explore_screen.dart';
-import 'screens/files_screen.dart';
 import 'screens/profile_screen.dart';
-import 'screens/pdf_viewer_screen.dart';
-import 'screens/file_manager_screen.dart';
-import 'services/deep_link_service.dart';
-import 'utils/app_theme.dart';
-import 'utils/route_constants.dart';
+import 'screens/settings_screen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Hive for local storage
-  await Hive.initFlutter();
-  
-  // Initialize deep linking service
-  // Deep linking will be initialized after router is created
-  
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+void main() {
+  runApp(const MyApp());
 }
 
-class MyApp extends ConsumerWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ScreenUtilInit(
-      designSize: const Size(375, 812), // iPhone 12 Pro size
-      minTextAdapt: true,
-      splitScreenMode: true,
-      builder: (context, child) {
-        return MaterialApp.router(
-          title: 'Flutter Learning App',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.system,
-          routerConfig: _router,
-          builder: (context, child) => ResponsiveBreakpoints.builder(
-            child: child!,
-            breakpoints: [
-              const Breakpoint(start: 0, end: 450, name: MOBILE),
-              const Breakpoint(start: 451, end: 800, name: TABLET),
-              const Breakpoint(start: 801, end: 1920, name: DESKTOP),
-              const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter _router = GoRouter(
-  initialLocation: RouteConstants.splash,
+  navigatorKey: _rootNavigatorKey,
+  initialLocation: '/login',
   routes: [
     GoRoute(
-      path: RouteConstants.splash,
-      name: 'splash',
-      builder: (context, state) => const SplashScreen(),
+      path: '/login',
+      builder: (context, state) => const LoginScreen(),
     ),
     GoRoute(
-      path: RouteConstants.main,
-      name: 'main',
-      builder: (context, state) => const MainScreen(),
+      path: '/register',
+      builder: (context, state) => const RegisterScreen(),
+    ),
+    ShellRoute(
+      navigatorKey: _shellNavigatorKey,
+      builder: (context, state, child) {
+        return MainScaffold(child: child);
+      },
       routes: [
         GoRoute(
-          path: 'home',
-          name: 'home',
+          path: '/home',
           builder: (context, state) => const HomeScreen(),
         ),
         GoRoute(
-          path: 'explore',
-          name: 'explore',
-          builder: (context, state) => const ExploreScreen(),
-        ),
-        GoRoute(
-          path: 'files',
-          name: 'files',
-          builder: (context, state) => const FileManagerScreen(),
-        ),
-        GoRoute(
-          path: 'profile',
-          name: 'profile',
+          path: '/profile',
           builder: (context, state) => const ProfileScreen(),
         ),
+        GoRoute(
+          path: '/settings',
+          builder: (context, state) => const SettingsScreen(),
+        ),
       ],
-    ),
-    GoRoute(
-      path: RouteConstants.pdfViewer,
-      name: 'pdfViewer',
-      builder: (context, state) {
-        final filePath = state.uri.queryParameters['filePath'] ?? '';
-        return PDFViewerScreen(filePath: filePath);
-      },
-    ),
-    // Deep link routes
-    GoRoute(
-      path: '/deep/:action',
-      name: 'deepLink',
-      builder: (context, state) {
-        final action = state.pathParameters['action'] ?? '';
-        return DeepLinkHandler(action: action);
-      },
     ),
   ],
 );
 
-// Initialize deep linking with router
-class _AppInitializer {
-  static bool _initialized = false;
-  
-  static void initialize() {
-    if (!_initialized) {
-      DeepLinkService.instance.initialize(router: _router);
-      _initialized = true;
-    }
-  }
-}
-
-class DeepLinkHandler extends StatelessWidget {
-  final String action;
-  
-  const DeepLinkHandler({super.key, required this.action});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Initialize deep linking
-    _AppInitializer.initialize();
-    
-    // Handle different deep link actions
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      switch (action) {
-        case 'home':
-          context.go(RouteConstants.main);
-          break;
-        case 'files':
-          context.go('${RouteConstants.main}/files');
-          break;
-        case 'profile':
-          context.go('${RouteConstants.main}/profile');
-          break;
-        default:
-          context.go(RouteConstants.main);
-      }
-    });
-    
-    return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
+    return MaterialApp.router(
+      routerConfig: _router,
+      debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.dark, // Force dark mode always
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: Colors.black,
+        primaryColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Colors.black,
+          selectedItemColor: Colors.white,
+          unselectedItemColor: Colors.grey,
+        ),
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.white),
+          bodyMedium: TextStyle(color: Colors.white70),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+        useMaterial3: true,
+      ),
+    );
+  }
+}
+
+
+class MainScaffold extends StatefulWidget {
+  final Widget child;
+  const MainScaffold({super.key, required this.child});
+
+  @override
+  State<MainScaffold> createState() => _MainScaffoldState();
+}
+
+class _MainScaffoldState extends State<MainScaffold> {
+  int _currentIndex = 0;
+  static const tabs = ['/home', '/profile', '/settings'];
+
+  void _onTap(int index) {
+    if (_currentIndex != index) {
+      setState(() => _currentIndex = index);
+      context.go(tabs[index]);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: widget.child,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: _onTap,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+        ],
       ),
     );
   }

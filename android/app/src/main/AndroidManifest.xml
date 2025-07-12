@@ -2,23 +2,22 @@
   
   <!-- Standard permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!--<uses-permission android:name="android.permission.WAKE_LOCK" />-->
     
     <!-- Storage permissions -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
-                     android:maxSdkVersion="32" />
+    <!--<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />-->
+    <!--<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />-->
     
     <!-- For Android 13+ (API level 33+) -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <!--<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />-->
+    <!--<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />-->
+    <!--<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />-->
     
     <!-- Network state -->
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!--<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />-->
     
     <!-- Camera (if needed for file selection) -->
-    <uses-permission android:name="android.permission.CAMERA" />
+    <!--<uses-permission android:name="android.permission.CAMERA" />-->
     <application
         android:label="XYZ"
         android:name="${applicationName}"
@@ -86,9 +85,9 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:mimeType="application/pdf" />
-        </intent>
+        <!--<intent>-->
+        <!--    <action android:name="android.intent.action.VIEW" />-->
+        <!--    <data android:mimeType="application/pdf" />-->
+        <!--</intent>-->
     </queries>
 </manifest>
