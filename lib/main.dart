@@ -1,119 +1,190 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'screens/login_screen.dart';
-import 'screens/register_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/settings_screen.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
-final _shellNavigatorKey = GlobalKey<NavigatorState>();
-
-final GoRouter _router = GoRouter(
-  navigatorKey: _rootNavigatorKey,
-  initialLocation: '/login',
-  routes: [
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: '/register',
-      builder: (context, state) => const RegisterScreen(),
-    ),
-    ShellRoute(
-      navigatorKey: _shellNavigatorKey,
-      builder: (context, state, child) {
-        return MainScaffold(child: child);
-      },
-      routes: [
-        GoRoute(
-          path: '/home',
-          builder: (context, state) => const HomeScreen(),
-        ),
-        GoRoute(
-          path: '/profile',
-          builder: (context, state) => const ProfileScreen(),
-        ),
-        GoRoute(
-          path: '/settings',
-          builder: (context, state) => const SettingsScreen(),
-        ),
-      ],
-    ),
-  ],
-);
-
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp.router(
-      routerConfig: _router,
-      debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.dark, // Force dark mode always
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: Colors.black,
-        primaryColor: Colors.white,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
-          elevation: 0,
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  static const platform = MethodChannel('directory_permission_advanced');
+
+  List<Map<String, String>> folders = [];
+
+  Future<void> pickDirectory() async {
+    TextEditingController nameController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Name your folder"),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(labelText: "Folder name"),
         ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: Colors.black,
-          selectedItemColor: Colors.white,
-          unselectedItemColor: Colors.grey,
-        ),
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Colors.white),
-          bodyMedium: TextStyle(color: Colors.white70),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        useMaterial3: true,
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              if (nameController.text.trim().isEmpty) return;
+
+              final result = await platform.invokeMethod(
+                'pickDirectory',
+                {"folderName": nameController.text.trim()},
+              );
+
+              loadFolders();
+            },
+            child: const Text("Pick Folder"),
+          ),
+        ],
       ),
     );
   }
-}
 
+  Future<void> loadFolders() async {
+    final result = await platform.invokeMethod('getFolders');
+    setState(() {
+      folders = List<Map<String, String>>.from(
+        (result as List).map((e) => Map<String, String>.from(e)),
+      );
+    });
+  }
 
-class MainScaffold extends StatefulWidget {
-  final Widget child;
-  const MainScaffold({super.key, required this.child});
+  Future<void> writeFile(String folderKey) async {
+    TextEditingController fileController = TextEditingController();
+    TextEditingController contentController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Write file"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: fileController,
+              decoration: const InputDecoration(labelText: "File name"),
+            ),
+            TextField(
+              controller: contentController,
+              decoration: const InputDecoration(labelText: "Content"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await platform.invokeMethod('writeToDirectory', {
+                "folderKey": folderKey,
+                "fileName": fileController.text.trim(),
+                "content": contentController.text,
+              });
+            },
+            child: const Text("Write"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> readFile(String folderKey) async {
+    TextEditingController fileController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Read file"),
+        content: TextField(
+          controller: fileController,
+          decoration: const InputDecoration(labelText: "File name"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              final result = await platform.invokeMethod('readFromDirectory', {
+                "folderKey": folderKey,
+                "fileName": fileController.text.trim(),
+              });
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text("File Content"),
+                  content: Text(result ?? "No content"),
+                ),
+              );
+            },
+            child: const Text("Read"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> removeFolder(String folderKey) async {
+    await platform.invokeMethod('removeFolder', {"folderKey": folderKey});
+    loadFolders();
+  }
 
   @override
-  State<MainScaffold> createState() => _MainScaffoldState();
-}
-
-class _MainScaffoldState extends State<MainScaffold> {
-  int _currentIndex = 0;
-  static const tabs = ['/home', '/profile', '/settings'];
-
-  void _onTap(int index) {
-    if (_currentIndex != index) {
-      setState(() => _currentIndex = index);
-      context.go(tabs[index]);
-    }
+  void initState() {
+    super.initState();
+    loadFolders();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: widget.child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTap,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
-        ],
+    return MaterialApp(
+      title: 'Advanced SAF App',
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Advanced SAF App'),
+        ),
+        body: Column(
+          children: [
+            ElevatedButton(
+              onPressed: pickDirectory,
+              child: const Text("Add New Folder"),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: folders.length,
+                itemBuilder: (context, index) {
+                  final folder = folders[index];
+                  return ListTile(
+                    title: Text(folder['name'] ?? "No Name"),
+                    subtitle: Text(folder['uri'] ?? ""),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: () => writeFile(folder['key']!),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.remove_red_eye),
+                          onPressed: () => readFile(folder['key']!),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () => removeFolder(folder['key']!),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
