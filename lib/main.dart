@@ -18,39 +18,12 @@ class _MyAppState extends State<MyApp> {
   List<Map<String, String>> folders = [];
 
   Future<void> pickDirectory() async {
-    final nameController = TextEditingController();
-
-    final picked = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Name your folder"),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(labelText: "Folder name"),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text("Pick Folder"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text("Cancel"),
-          ),
-        ],
-      ),
-    );
-
-    if (picked == true && nameController.text.trim().isNotEmpty) {
-      try {
-        await platform.invokeMethod(
-          'pickDirectory',
-          {"folderName": nameController.text.trim()},
-        );
-        loadFolders();
-      } on PlatformException catch (e) {
-        debugPrint("Error picking folder: ${e.message}");
-      }
+    try {
+      final result = await platform.invokeMethod('pickDirectory');
+      debugPrint('Picked: $result');
+      loadFolders();
+    } on PlatformException catch (e) {
+      debugPrint("Error picking folder: ${e.message}");
     }
   }
 
@@ -213,7 +186,7 @@ class _MyAppState extends State<MyApp> {
                       itemBuilder: (context, index) {
                         final folder = folders[index];
                         return ListTile(
-                          title: Text(folder['name'] ?? "No Name"),
+                          title: Text(folder['name'] ?? "Folder"),
                           subtitle: Text(folder['uri'] ?? ""),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,

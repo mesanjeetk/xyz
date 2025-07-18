@@ -11,7 +11,6 @@ class MainActivity : FlutterActivity() {
     private val CHANNEL = "directory_permission_advanced"
     private val safHelper by lazy { SafHelper(this) }
 
-    private var currentFolderName: String = ""
     private var resultChannel: MethodChannel.Result? = null
 
     private val REQUEST_CODE_PICK_DIRECTORY = 12345
@@ -23,8 +22,6 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "pickDirectory" -> {
-                        val name = call.argument<String>("folderName") ?: "Unnamed"
-                        currentFolderName = name
                         resultChannel = result
 
                         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
@@ -68,7 +65,7 @@ class MainActivity : FlutterActivity() {
             if (resultCode == RESULT_OK && data != null) {
                 val uri: Uri? = data.data
                 if (uri != null) {
-                    safHelper.saveFolderUri(currentFolderName, uri)
+                    safHelper.saveFolderUri("Folder", uri)
                     resultChannel?.success(mapOf("uri" to uri.toString()))
                 } else {
                     resultChannel?.error("NO_URI", "No folder selected", null)
