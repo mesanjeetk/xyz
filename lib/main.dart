@@ -18,9 +18,9 @@ class _MyAppState extends State<MyApp> {
   List<Map<String, String>> folders = [];
 
   Future<void> pickDirectory() async {
-    TextEditingController nameController = TextEditingController();
+    final nameController = TextEditingController();
 
-    await showDialog(
+    final picked = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Name your folder"),
@@ -30,38 +30,48 @@ class _MyAppState extends State<MyApp> {
         ),
         actions: [
           TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              if (nameController.text.trim().isEmpty) return;
-
-              final result = await platform.invokeMethod(
-                'pickDirectory',
-                {"folderName": nameController.text.trim()},
-              );
-
-              loadFolders();
-            },
+            onPressed: () => Navigator.of(context).pop(true),
             child: const Text("Pick Folder"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text("Cancel"),
           ),
         ],
       ),
     );
+
+    if (picked == true && nameController.text.trim().isNotEmpty) {
+      try {
+        await platform.invokeMethod(
+          'pickDirectory',
+          {"folderName": nameController.text.trim()},
+        );
+        loadFolders();
+      } on PlatformException catch (e) {
+        debugPrint("Error picking folder: ${e.message}");
+      }
+    }
   }
 
   Future<void> loadFolders() async {
-    final result = await platform.invokeMethod('getFolders');
-    setState(() {
-      folders = List<Map<String, String>>.from(
-        (result as List).map((e) => Map<String, String>.from(e)),
-      );
-    });
+    try {
+      final result = await platform.invokeMethod('getFolders');
+      setState(() {
+        folders = List<Map<String, String>>.from(
+          (result as List).map((e) => Map<String, String>.from(e)),
+        );
+      });
+    } on PlatformException catch (e) {
+      debugPrint("Error loading folders: ${e.message}");
+    }
   }
 
   Future<void> writeFile(String folderKey) async {
-    TextEditingController fileController = TextEditingController();
-    TextEditingController contentController = TextEditingController();
+    final fileController = TextEditingController();
+    final contentController = TextEditingController();
 
-    await showDialog(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Write file"),
@@ -80,25 +90,39 @@ class _MyAppState extends State<MyApp> {
         ),
         actions: [
           TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await platform.invokeMethod('writeToDirectory', {
-                "folderKey": folderKey,
-                "fileName": fileController.text.trim(),
-                "content": contentController.text,
-              });
-            },
+            onPressed: () => Navigator.of(context).pop(true),
             child: const Text("Write"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text("Cancel"),
           ),
         ],
       ),
     );
+
+    if (confirmed == true &&
+        fileController.text.trim().isNotEmpty &&
+        contentController.text.isNotEmpty) {
+      try {
+        await platform.invokeMethod('writeToDirectory', {
+          "folderKey": folderKey,
+          "fileName": fileController.text.trim(),
+          "content": contentController.text,
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('File written successfully')),
+        );
+      } on PlatformException catch (e) {
+        debugPrint("Error writing file: ${e.message}");
+      }
+    }
   }
 
   Future<void> readFile(String folderKey) async {
-    TextEditingController fileController = TextEditingController();
+    final fileController = TextEditingController();
 
-    await showDialog(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Read file"),
@@ -108,30 +132,57 @@ class _MyAppState extends State<MyApp> {
         ),
         actions: [
           TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              final result = await platform.invokeMethod('readFromDirectory', {
-                "folderKey": folderKey,
-                "fileName": fileController.text.trim(),
-              });
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text("File Content"),
-                  content: Text(result ?? "No content"),
-                ),
-              );
-            },
+            onPressed: () => Navigator.of(context).pop(true),
             child: const Text("Read"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text("Cancel"),
           ),
         ],
       ),
     );
+
+    if (confirmed == true && fileController.text.trim().isNotEmpty) {
+      try {
+        final result = await platform.invokeMethod('readFromDirectory', {
+          "folderKey": folderKey,
+          "fileName": fileController.text.trim(),
+        });
+
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text("File Content"),
+              content: SingleChildScrollView(
+                child: Text(result?.toString() ?? "No content"),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text("Close"),
+                ),
+              ],
+            ),
+          );
+        }
+      } on PlatformException catch (e) {
+        debugPrint("Error reading file: ${e.message}");
+      }
+    }
   }
 
   Future<void> removeFolder(String folderKey) async {
-    await platform.invokeMethod('removeFolder', {"folderKey": folderKey});
-    loadFolders();
+    try {
+      await platform.invokeMethod('removeFolder', {"folderKey": folderKey});
+      loadFolders();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Folder removed')),
+      );
+    } on PlatformException catch (e) {
+      debugPrint("Error removing folder: ${e.message}");
+    }
   }
 
   @override
@@ -155,33 +206,38 @@ class _MyAppState extends State<MyApp> {
               child: const Text("Add New Folder"),
             ),
             Expanded(
-              child: ListView.builder(
-                itemCount: folders.length,
-                itemBuilder: (context, index) {
-                  final folder = folders[index];
-                  return ListTile(
-                    title: Text(folder['name'] ?? "No Name"),
-                    subtitle: Text(folder['uri'] ?? ""),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () => writeFile(folder['key']!),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.remove_red_eye),
-                          onPressed: () => readFile(folder['key']!),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () => removeFolder(folder['key']!),
-                        ),
-                      ],
+              child: folders.isEmpty
+                  ? const Center(child: Text('No folders yet'))
+                  : ListView.builder(
+                      itemCount: folders.length,
+                      itemBuilder: (context, index) {
+                        final folder = folders[index];
+                        return ListTile(
+                          title: Text(folder['name'] ?? "No Name"),
+                          subtitle: Text(folder['uri'] ?? ""),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                tooltip: "Write File",
+                                onPressed: () => writeFile(folder['key']!),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.remove_red_eye),
+                                tooltip: "Read File",
+                                onPressed: () => readFile(folder['key']!),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete),
+                                tooltip: "Remove Folder",
+                                onPressed: () => removeFolder(folder['key']!),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ],
         ),
