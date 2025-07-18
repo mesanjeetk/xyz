@@ -5,6 +5,7 @@ import android.net.Uri
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.provider.DocumentsContract
 
 class MainActivity : FlutterActivity() {
 
@@ -12,7 +13,6 @@ class MainActivity : FlutterActivity() {
     private val safHelper by lazy { SafHelper(this) }
 
     private var resultChannel: MethodChannel.Result? = null
-
     private val REQUEST_CODE_PICK_DIRECTORY = 12345
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -23,7 +23,6 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "pickDirectory" -> {
                         resultChannel = result
-
                         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
                         intent.addFlags(
                             Intent.FLAG_GRANT_READ_URI_PERMISSION or
@@ -32,26 +31,33 @@ class MainActivity : FlutterActivity() {
                         )
                         startActivityForResult(intent, REQUEST_CODE_PICK_DIRECTORY)
                     }
-                    "getFolders" -> {
-                        result.success(safHelper.getAllFolders())
-                    }
-                    "writeToDirectory" -> {
+                    "getFolders" -> result.success(safHelper.getAllFolders())
+                    "getFolderTree" -> {
                         val key = call.argument<String>("folderKey")!!
-                        val fileName = call.argument<String>("fileName")!!
-                        val content = call.argument<String>("content")!!
-                        val success = safHelper.writeToFolder(key, fileName, content)
-                        if (success) result.success(true) else result.error("WRITE_FAIL", "", null)
+                        val tree = safHelper.getFolderTree(key)
+                        result.success(tree)
                     }
-                    "readFromDirectory" -> {
-                        val key = call.argument<String>("folderKey")!!
-                        val fileName = call.argument<String>("fileName")!!
-                        val content = safHelper.readFromFolder(key, fileName)
+                    "createFolder" -> {
+                        val parentUri = call.argument<String>("parentUri")!!
+                        val name = call.argument<String>("name")!!
+                        val success = safHelper.createFolder(parentUri, name)
+                        if (success) result.success(true) else result.error("CREATE_FAIL", "", null)
+                    }
+                    "createFile" -> {
+                        val parentUri = call.argument<String>("parentUri")!!
+                        val name = call.argument<String>("name")!!
+                        val success = safHelper.createFile(parentUri, name)
+                        if (success) result.success(true) else result.error("CREATE_FAIL", "", null)
+                    }
+                    "deleteDocument" -> {
+                        val uri = call.argument<String>("uri")!!
+                        val success = safHelper.deleteDocument(uri)
+                        if (success) result.success(true) else result.error("DELETE_FAIL", "", null)
+                    }
+                    "readFileContent" -> {
+                        val uri = call.argument<String>("uri")!!
+                        val content = safHelper.readFileContent(uri)
                         result.success(content)
-                    }
-                    "removeFolder" -> {
-                        val key = call.argument<String>("folderKey")!!
-                        safHelper.removeFolder(key)
-                        result.success(true)
                     }
                     else -> result.notImplemented()
                 }

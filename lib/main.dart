@@ -7,7 +7,6 @@ void main() {
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
-
   @override
   State<MyApp> createState() => _MyAppState();
 }
@@ -16,145 +15,126 @@ class _MyAppState extends State<MyApp> {
   static const platform = MethodChannel('directory_permission_advanced');
 
   List<Map<String, String>> folders = [];
+  Map<String, dynamic>? folderTree;
 
   Future<void> pickDirectory() async {
-    try {
-      final result = await platform.invokeMethod('pickDirectory');
-      debugPrint('Picked: $result');
-      loadFolders();
-    } on PlatformException catch (e) {
-      debugPrint("Error picking folder: ${e.message}");
-    }
+    await platform.invokeMethod('pickDirectory');
+    await loadFolders();
   }
 
   Future<void> loadFolders() async {
-    try {
-      final result = await platform.invokeMethod('getFolders');
-      setState(() {
-        folders = List<Map<String, String>>.from(
-          (result as List).map((e) => Map<String, String>.from(e)),
-        );
-      });
-    } on PlatformException catch (e) {
-      debugPrint("Error loading folders: ${e.message}");
+    final result = await platform.invokeMethod('getFolders');
+    setState(() {
+      folders = List<Map<String, String>>.from(
+        (result as List).map((e) => Map<String, String>.from(e)),
+      );
+    });
+  }
+
+  Future<void> loadFolderTree(String key) async {
+    final result = await platform.invokeMethod('getFolderTree', {"folderKey": key});
+    setState(() {
+      folderTree = Map<String, dynamic>.from(result);
+    });
+  }
+
+  Future<void> createFolder(String parentUri) async {
+    final nameController = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Create Folder"),
+        content: TextField(controller: nameController, decoration: const InputDecoration(labelText: "Name")),
+        actions: [
+          TextButton(
+            child: const Text("Create"),
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await platform.invokeMethod('createFolder', {
+                "parentUri": parentUri,
+                "name": nameController.text.trim(),
+              });
+              await refreshTree();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> createFile(String parentUri) async {
+    final nameController = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Create File"),
+        content: TextField(controller: nameController, decoration: const InputDecoration(labelText: "Name.txt")),
+        actions: [
+          TextButton(
+            child: const Text("Create"),
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await platform.invokeMethod('createFile', {
+                "parentUri": parentUri,
+                "name": nameController.text.trim(),
+              });
+              await refreshTree();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> deleteDocument(String uri) async {
+    await platform.invokeMethod('deleteDocument', {"uri": uri});
+    await refreshTree();
+  }
+
+  Future<void> readFile(String uri) async {
+    final result = await platform.invokeMethod('readFileContent', {"uri": uri});
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("File Content"),
+        content: SingleChildScrollView(child: Text(result.toString())),
+      ),
+    );
+  }
+
+  Future<void> refreshTree() async {
+    if (folders.isNotEmpty) {
+      await loadFolderTree(folders.first['key']!);
     }
   }
 
-  Future<void> writeFile(String folderKey) async {
-    final fileController = TextEditingController();
-    final contentController = TextEditingController();
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Write file"),
-        content: Column(
+  Widget buildTree(Map<String, dynamic> node) {
+    if (node['type'] == 'file') {
+      return ListTile(
+        title: Text(node['name']),
+        trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: fileController,
-              decoration: const InputDecoration(labelText: "File name"),
-            ),
-            TextField(
-              controller: contentController,
-              decoration: const InputDecoration(labelText: "Content"),
-            ),
+            IconButton(icon: const Icon(Icons.remove_red_eye), onPressed: () => readFile(node['uri'])),
+            IconButton(icon: const Icon(Icons.delete), onPressed: () => deleteDocument(node['uri'])),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text("Write"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text("Cancel"),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true &&
-        fileController.text.trim().isNotEmpty &&
-        contentController.text.isNotEmpty) {
-      try {
-        await platform.invokeMethod('writeToDirectory', {
-          "folderKey": folderKey,
-          "fileName": fileController.text.trim(),
-          "content": contentController.text,
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('File written successfully')),
-        );
-      } on PlatformException catch (e) {
-        debugPrint("Error writing file: ${e.message}");
-      }
-    }
-  }
-
-  Future<void> readFile(String folderKey) async {
-    final fileController = TextEditingController();
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Read file"),
-        content: TextField(
-          controller: fileController,
-          decoration: const InputDecoration(labelText: "File name"),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text("Read"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text("Cancel"),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && fileController.text.trim().isNotEmpty) {
-      try {
-        final result = await platform.invokeMethod('readFromDirectory', {
-          "folderKey": folderKey,
-          "fileName": fileController.text.trim(),
-        });
-
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text("File Content"),
-              content: SingleChildScrollView(
-                child: Text(result?.toString() ?? "No content"),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text("Close"),
-                ),
-              ],
-            ),
-          );
-        }
-      } on PlatformException catch (e) {
-        debugPrint("Error reading file: ${e.message}");
-      }
-    }
-  }
-
-  Future<void> removeFolder(String folderKey) async {
-    try {
-      await platform.invokeMethod('removeFolder', {"folderKey": folderKey});
-      loadFolders();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Folder removed')),
       );
-    } on PlatformException catch (e) {
-      debugPrint("Error removing folder: ${e.message}");
+    } else {
+      return ExpansionTile(
+        title: Text(node['name']),
+        children: [
+          ...((node['children'] as List).map((child) => buildTree(Map<String, dynamic>.from(child)))),
+          ListTile(
+            title: const Text("➕ New Folder"),
+            onTap: () => createFolder(node['uri']),
+          ),
+          ListTile(
+            title: const Text("📝 New File"),
+            onTap: () => createFile(node['uri']),
+          ),
+        ],
+      );
     }
   }
 
@@ -167,50 +147,21 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Advanced SAF App',
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Advanced SAF App'),
-        ),
+        appBar: AppBar(title: const Text("Advanced SAF Explorer")),
         body: Column(
           children: [
-            ElevatedButton(
-              onPressed: pickDirectory,
-              child: const Text("Add New Folder"),
-            ),
+            ElevatedButton(onPressed: pickDirectory, child: const Text("Add Root Folder")),
+            if (folders.isNotEmpty)
+              ElevatedButton(
+                onPressed: () => loadFolderTree(folders.first['key']!),
+                child: const Text("Load File Tree"),
+              ),
+            const Divider(),
             Expanded(
-              child: folders.isEmpty
-                  ? const Center(child: Text('No folders yet'))
-                  : ListView.builder(
-                      itemCount: folders.length,
-                      itemBuilder: (context, index) {
-                        final folder = folders[index];
-                        return ListTile(
-                          title: Text(folder['name'] ?? "Folder"),
-                          subtitle: Text(folder['uri'] ?? ""),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                tooltip: "Write File",
-                                onPressed: () => writeFile(folder['key']!),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.remove_red_eye),
-                                tooltip: "Read File",
-                                onPressed: () => readFile(folder['key']!),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                tooltip: "Remove Folder",
-                                onPressed: () => removeFolder(folder['key']!),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+              child: folderTree == null
+                  ? const Center(child: Text("No tree loaded"))
+                  : SingleChildScrollView(child: buildTree(folderTree!)),
             ),
           ],
         ),
