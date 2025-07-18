@@ -46,7 +46,6 @@ class SafHelper(private val context: Context) {
 
     private fun getFolderTreeByUri(uri: Uri, docId: String): List<Map<String, Any>> {
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, docId)
-
         val cursor = context.contentResolver.query(
             childrenUri,
             arrayOf(
@@ -63,6 +62,11 @@ class SafHelper(private val context: Context) {
                 val childId = it.getString(0)
                 val name = it.getString(1)
                 val mime = it.getString(2)
+
+                // ✅ Ignore only node_modules
+                if (name.equals("node_modules", ignoreCase = true)) {
+                    continue
+                }
 
                 val childUri = DocumentsContract.buildDocumentUriUsingTree(uri, childId)
                 if (DocumentsContract.Document.MIME_TYPE_DIR == mime) {
@@ -93,8 +97,7 @@ class SafHelper(private val context: Context) {
                 parentUri,
                 DocumentsContract.Document.MIME_TYPE_DIR,
                 name
-            )
-            true
+            ) != null
         } catch (e: Exception) {
             false
         }
@@ -108,8 +111,7 @@ class SafHelper(private val context: Context) {
                 parentUri,
                 "text/plain",
                 name
-            )
-            true
+            ) != null
         } catch (e: Exception) {
             false
         }

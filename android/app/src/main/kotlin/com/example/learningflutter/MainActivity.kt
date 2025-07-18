@@ -8,11 +8,11 @@ import io.flutter.plugin.common.MethodChannel
 import android.provider.DocumentsContract
 
 class MainActivity : FlutterActivity() {
-
     private val CHANNEL = "directory_permission_advanced"
     private val safHelper by lazy { SafHelper(this) }
 
     private var resultChannel: MethodChannel.Result? = null
+    private var pickedFolderName: String = "RootFolder"
     private val REQUEST_CODE_PICK_DIRECTORY = 12345
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -22,6 +22,7 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "pickDirectory" -> {
+                        pickedFolderName = call.argument<String>("folderName") ?: "RootFolder"
                         resultChannel = result
                         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
                         intent.addFlags(
@@ -41,18 +42,18 @@ class MainActivity : FlutterActivity() {
                         val parentUri = call.argument<String>("parentUri")!!
                         val name = call.argument<String>("name")!!
                         val success = safHelper.createFolder(parentUri, name)
-                        if (success) result.success(true) else result.error("CREATE_FAIL", "", null)
+                        if (success) result.success(true) else result.error("CREATE_FAIL", "Could not create folder", null)
                     }
                     "createFile" -> {
                         val parentUri = call.argument<String>("parentUri")!!
                         val name = call.argument<String>("name")!!
                         val success = safHelper.createFile(parentUri, name)
-                        if (success) result.success(true) else result.error("CREATE_FAIL", "", null)
+                        if (success) result.success(true) else result.error("CREATE_FAIL", "Could not create file", null)
                     }
                     "deleteDocument" -> {
                         val uri = call.argument<String>("uri")!!
                         val success = safHelper.deleteDocument(uri)
-                        if (success) result.success(true) else result.error("DELETE_FAIL", "", null)
+                        if (success) result.success(true) else result.error("DELETE_FAIL", "Could not delete", null)
                     }
                     "readFileContent" -> {
                         val uri = call.argument<String>("uri")!!
@@ -71,13 +72,13 @@ class MainActivity : FlutterActivity() {
             if (resultCode == RESULT_OK && data != null) {
                 val uri: Uri? = data.data
                 if (uri != null) {
-                    safHelper.saveFolderUri("Folder", uri)
+                    safHelper.saveFolderUri(pickedFolderName, uri)
                     resultChannel?.success(mapOf("uri" to uri.toString()))
                 } else {
                     resultChannel?.error("NO_URI", "No folder selected", null)
                 }
             } else {
-                resultChannel?.error("CANCELLED", "User cancelled", null)
+                resultChannel?.error("CANCELLED", "User cancelled folder pick", null)
             }
         }
     }
