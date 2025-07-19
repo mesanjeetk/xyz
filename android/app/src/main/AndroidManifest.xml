@@ -2,6 +2,7 @@
   
   <!-- Standard permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
     <!--<uses-permission android:name="android.permission.WAKE_LOCK" />-->
     
     <!-- Storage permissions -->
@@ -21,7 +22,8 @@
     <application
         android:label="XYZ"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

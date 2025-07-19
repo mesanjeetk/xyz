@@ -1,84 +1,47 @@
 package com.example.learningflutter
 
+import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.provider.DocumentsContract
+import android.os.Build
+import android.os.Bundle
+import android.provider.Settings
+import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
+import android.view.WindowManager
+import android.widget.Button
+import android.widget.TextView
+import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private val CHANNEL = "com.example.floating/widget"
+    private var windowManager: WindowManager? = null
+    private var overlayView: View? = null
+    private var clickCount = 0
 
-    private val CHANNEL = "directory_permission_advanced"
-    private val safHelper by lazy { SafHelper(this) }
-
-    private var resultChannel: MethodChannel.Result? = null
-    private var pickedFolderName: String = "RootFolder"
-    private val REQUEST_CODE_PICK_DIRECTORY = 12345
-
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+    override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "pickDirectory" -> {
-                        pickedFolderName = call.argument<String>("folderName") ?: "RootFolder"
-                        resultChannel = result
-                        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-                        intent.addFlags(
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
-                                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-                        )
-                        startActivityForResult(intent, REQUEST_CODE_PICK_DIRECTORY)
+                    "showOverlay" -> {
+                        if (Settings.canDrawOverlays(this)) {
+                            showFloatingWidget()
+                        } else {
+                            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                            intent.data = android.net.Uri.parse("package:$packageName")
+                            startActivity(intent)
+                        }
+                        result.success(null)
                     }
 
-                    "getFolders" -> result.success(safHelper.getAllFolders())
-
-                    "removeFolder" -> {
-                        val key = call.argument<String>("folderKey")!!
-                        safHelper.removeFolder(key)
-                        result.success(true)
-                    }
-
-                    "getFolderTree" -> {
-                        val key = call.argument<String>("folderKey")!!
-                        val tree = safHelper.getFolderTree(key)
-                        result.success(tree)
-                    }
-
-                    "createFolder" -> {
-                        val parentUri = call.argument<String>("parentUri")!!
-                        val name = call.argument<String>("name")!!
-                        val success = safHelper.createFolder(parentUri, name)
-                        if (success) result.success(true) else result.error("CREATE_FAIL", "Could not create folder", null)
-                    }
-
-                    "createFile" -> {
-                        val parentUri = call.argument<String>("parentUri")!!
-                        val name = call.argument<String>("name")!!
-                        val success = safHelper.createFile(parentUri, name)
-                        if (success) result.success(true) else result.error("CREATE_FAIL", "Could not create file", null)
-                    }
-
-                    "deleteDocument" -> {
-                        val uri = call.argument<String>("uri")!!
-                        val success = safHelper.deleteDocument(uri)
-                        if (success) result.success(true) else result.error("DELETE_FAIL", "Could not delete", null)
-                    }
-
-                    "renameDocument" -> {
-                        val uri = call.argument<String>("uri")!!
-                        val name = call.argument<String>("name")!!
-                        val success = safHelper.renameDocument(uri, name)
-                        if (success) result.success(true) else result.error("RENAME_FAIL", "Could not rename", null)
-                    }
-
-                    "readFileContent" -> {
-                        val uri = call.argument<String>("uri")!!
-                        val content = safHelper.readFileContent(uri)
-                        result.success(content)
+                    "closeOverlay" -> {
+                        removeFloatingWidget()
+                        result.success(null)
                     }
 
                     else -> result.notImplemented()
@@ -86,21 +49,74 @@ class MainActivity : FlutterActivity() {
             }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
+    private fun showFloatingWidget() {
+        if (overlayView != null) return // already showing
 
-        if (requestCode == REQUEST_CODE_PICK_DIRECTORY) {
-            if (resultCode == RESULT_OK && data != null) {
-                val uri: Uri? = data.data
-                if (uri != null) {
-                    safHelper.saveFolderUri(pickedFolderName, uri)
-                    resultChannel?.success(mapOf("uri" to uri.toString()))
-                } else {
-                    resultChannel?.error("NO_URI", "No folder selected", null)
+        windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        overlayView = LayoutInflater.from(this).inflate(R.layout.floating_widget, null)
+
+        val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else
+            WindowManager.LayoutParams.TYPE_PHONE
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            layoutFlag,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            android.graphics.PixelFormat.TRANSLUCENT
+        )
+
+        params.x = 100
+        params.y = 200
+
+        val floatingButton = overlayView!!.findViewById<Button>(R.id.floating_button)
+        val floatingText = overlayView!!.findViewById<TextView>(R.id.floating_text)
+        val closeBtn = overlayView!!.findViewById<Button>(R.id.close_button)
+
+        floatingButton.setOnClickListener {
+            clickCount++
+            floatingText.text = "Clicks: $clickCount"
+        }
+
+        closeBtn.setOnClickListener {
+            removeFloatingWidget()
+        }
+
+        overlayView!!.setOnTouchListener(object : View.OnTouchListener {
+            var lastX = 0
+            var lastY = 0
+            override fun onTouch(v: View, event: MotionEvent): Boolean {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        lastX = event.rawX.toInt()
+                        lastY = event.rawY.toInt()
+                        return true
+                    }
+
+                    MotionEvent.ACTION_MOVE -> {
+                        val deltaX = event.rawX.toInt() - lastX
+                        val deltaY = event.rawY.toInt() - lastY
+                        params.x += deltaX
+                        params.y += deltaY
+                        windowManager!!.updateViewLayout(overlayView, params)
+                        lastX = event.rawX.toInt()
+                        lastY = event.rawY.toInt()
+                        return true
+                    }
                 }
-            } else {
-                resultChannel?.error("CANCELLED", "User cancelled folder pick", null)
+                return false
             }
+        })
+
+        windowManager!!.addView(overlayView, params)
+    }
+
+    private fun removeFloatingWidget() {
+        if (windowManager != null && overlayView != null) {
+            windowManager!!.removeView(overlayView)
+            overlayView = null
         }
     }
 }
