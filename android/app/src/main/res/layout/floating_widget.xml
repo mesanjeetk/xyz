@@ -1,51 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/overlay_root"
+    android:id="@+id/floating_root"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:padding="8dp"
-    android:background="@android:color/transparent">
+    android:gravity="center_vertical"
+    android:padding="4dp">
 
-    <!-- Floating round icon -->
+    <!-- Round Floating Icon -->
     <ImageView
         android:id="@+id/floating_icon"
         android:layout_width="60dp"
         android:layout_height="60dp"
-        android:src="@android:drawable/btn_star_big_on"
-        android:background="@drawable/circle_bg"
-        android:scaleType="centerInside"
-        android:elevation="10dp"
-        android:padding="10dp" />
+        android:background="@drawable/round_background"
+        android:padding="10dp"
+        android:src="@android:drawable/ic_dialog_info"
+        android:elevation="8dp"
+        android:contentDescription="Floating Icon" />
 
-    <!-- Tools panel (initially hidden) -->
+    <!-- Expandable Tools Panel -->
     <LinearLayout
         android:id="@+id/tools_panel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:visibility="gone"
         android:layout_marginStart="8dp"
+        android:visibility="gone"
+        android:alpha="0"
         android:background="@drawable/panel_background"
-        android:padding="8dp">
+        android:elevation="6dp"
+        android:padding="6dp">
 
         <Button
-            android:id="@+id/tool_1"
+            android:id="@+id/tool_clipboard"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tool 1" />
+            android:text="📋 Clipboard"
+            android:textSize="12sp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:backgroundTint="@android:color/holo_blue_light"
+            android:textColor="@android:color/white"/>
 
         <Button
-            android:id="@+id/tool_2"
+            android:id="@+id/tool_brightness"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tool 2" />
+            android:text="🔆 Brightness"
+            android:textSize="12sp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:layout_marginTop="4dp"
+            android:backgroundTint="@android:color/holo_orange_light"
+            android:textColor="@android:color/white"/>
 
         <Button
             android:id="@+id/close_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Close"
-            android:textColor="@android:color/holo_red_dark" />
+            android:text="✖ Close"
+            android:textSize="12sp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:layout_marginTop="4dp"
+            android:backgroundTint="@android:color/holo_red_dark"
+            android:textColor="@android:color/white"/>
     </LinearLayout>
+
 </LinearLayout>
