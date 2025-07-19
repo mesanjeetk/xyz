@@ -199,7 +199,7 @@ class _MyAppState extends State<MyApp> {
                 icon: const Icon(Icons.delete, size: 20),
                 onPressed: () => deleteDocument(uri),
               ),
-              const Text("Actions")
+              const Text("Action")
             ],
           ),
           ...children.map((e) => buildTree(Map<String, dynamic>.from(e))).toList(),
@@ -213,7 +213,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Advanced SAF Tree',
+      title: 'File Tree',
       home: Scaffold(
         appBar: AppBar(
           title: const Text("Advanced SAF File Explorer"),
