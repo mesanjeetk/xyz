@@ -1,29 +1,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  
-  <!-- Standard permissions -->
+
+    <!-- Required Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-    <!--<uses-permission android:name="android.permission.WAKE_LOCK" />-->
-    
-    <!-- Storage permissions -->
-    <!--<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />-->
-    <!--<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />-->
-    
-    <!-- For Android 13+ (API level 33+) -->
-    <!--<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />-->
-    <!--<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />-->
-    <!--<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />-->
-    
-    <!-- Network state -->
-    <!--<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />-->
-    
-    <!-- Camera (if needed for file selection) -->
-    <!--<uses-permission android:name="android.permission.CAMERA" />-->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <application
         android:label="XYZ"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
+
+        <!-- Floating Widget Service Declaration -->
+        <service
+            android:name=".FloatingWidgetService"
+            android:exported="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -33,41 +24,41 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-          
+
             <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
-              <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            
-          <!-- Deep link intent filters -->
+
+            <!-- Deep Link: Custom scheme -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="flutterlearning" />
             </intent-filter>
-            
-            <!-- HTTPS deep links -->
+
+            <!-- Deep Link: HTTPS -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" 
-                      android:host="flutterlearning.app" />
+                <data android:scheme="https" android:host="flutterlearning.app" />
             </intent-filter>
-            
-            <!-- Additional app_links support -->
+
+            <!-- Deep Link: HTTP fallback -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" 
-                      android:host="flutterlearning.app" />
+                <data android:scheme="http" android:host="flutterlearning.app" />
             </intent-filter>
+
+            <!-- PDF Viewer Intent -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -75,21 +66,17 @@
                 <data android:mimeType="application/pdf" />
             </intent-filter>
         </activity>
-        <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+
+        <!-- Required for Flutter plugin registration -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-    
+
     <queries>
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
         </intent>
-        <!--<intent>-->
-        <!--    <action android:name="android.intent.action.VIEW" />-->
-        <!--    <data android:mimeType="application/pdf" />-->
-        <!--</intent>-->
     </queries>
 </manifest>
