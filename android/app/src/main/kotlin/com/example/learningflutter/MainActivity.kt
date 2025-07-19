@@ -4,13 +4,17 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
-import android.widget.TextView
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -20,7 +24,7 @@ class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.floating/widget"
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
-    private var clickCount = 0
+    private var lastTouchTime = System.currentTimeMillis()
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -50,7 +54,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun showFloatingWidget() {
-        if (overlayView != null) return // already showing
+        if (overlayView != null) return
 
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         overlayView = LayoutInflater.from(this).inflate(R.layout.floating_widget, null)
@@ -71,25 +75,35 @@ class MainActivity : FlutterActivity() {
         params.x = 100
         params.y = 200
 
-        val floatingButton = overlayView!!.findViewById<Button>(R.id.floating_button)
-        val floatingText = overlayView!!.findViewById<TextView>(R.id.floating_text)
-        val closeBtn = overlayView!!.findViewById<Button>(R.id.close_button)
+        val icon = overlayView!!.findViewById<ImageView>(R.id.floating_icon)
+        val toolsPanel = overlayView!!.findViewById<LinearLayout>(R.id.tools_panel)
 
-        floatingButton.setOnClickListener {
-            clickCount++
-            floatingText.text = "Clicks: $clickCount"
+        var isToolsVisible = false
+        val handler = Handler(Looper.getMainLooper())
+
+        val idleRunnable = object : Runnable {
+            override fun run() {
+                if (System.currentTimeMillis() - lastTouchTime > 4000) {
+                    icon.alpha = 0.3f
+                }
+                handler.postDelayed(this, 1000)
+            }
+        }
+        handler.post(idleRunnable)
+
+        icon.setOnClickListener {
+            isToolsVisible = !isToolsVisible
+            toolsPanel.visibility = if (isToolsVisible) View.VISIBLE else View.GONE
         }
 
-        closeBtn.setOnClickListener {
-            removeFloatingWidget()
-        }
-
-        overlayView!!.setOnTouchListener(object : View.OnTouchListener {
+        icon.setOnTouchListener(object : View.OnTouchListener {
             var lastX = 0
             var lastY = 0
             override fun onTouch(v: View, event: MotionEvent): Boolean {
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
+                        lastTouchTime = System.currentTimeMillis()
+                        icon.alpha = 1f
                         lastX = event.rawX.toInt()
                         lastY = event.rawY.toInt()
                         return true
@@ -109,6 +123,22 @@ class MainActivity : FlutterActivity() {
                 return false
             }
         })
+
+        val tool1 = overlayView!!.findViewById<Button>(R.id.tool_1)
+        val tool2 = overlayView!!.findViewById<Button>(R.id.tool_2)
+        val closeBtn = overlayView!!.findViewById<Button>(R.id.close_button)
+
+        tool1.setOnClickListener {
+            Toast.makeText(this, "Tool 1 triggered", Toast.LENGTH_SHORT).show()
+        }
+
+        tool2.setOnClickListener {
+            Toast.makeText(this, "Tool 2 triggered", Toast.LENGTH_SHORT).show()
+        }
+
+        closeBtn.setOnClickListener {
+            removeFloatingWidget()
+        }
 
         windowManager!!.addView(overlayView, params)
     }
